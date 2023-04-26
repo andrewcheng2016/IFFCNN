@@ -155,3 +155,24 @@ def plot_confusion_matrix(cm, classes,
     # plt.ylabel('True label', fontsize=18)
     # plt.xlabel('Predicted label', fontsize=18)
     plt.tight_layout()
+
+"""
+To plot the comparison of different time.
+"""
+def comparisonPlot(opt, time, method, timeType, remove_path=False):
+    plt.figure(figsize=(10, 8))
+    # plt.title('Comparison of {} time'.format(timeType), fontsize=16)
+    plt.ylabel('Time (s)', fontsize=18)
+    plt.xlabel('Number of samples', fontsize=18)
+    plt.grid(True)
+    plt.rcParams['font.weight'] = 'bold'
+    color=['blue', 'green', 'purple', 'red']
+    x = np.arange(opt.num_samples_per_batch, opt.num_samples_per_batch*(time.shape[1]+1), opt.num_samples_per_batch)
+    for l in range(len(method)):
+        plt.plot(x, time[l], label=method[l], color=color[l], marker='o')
+        plt.legend(loc='upper left', fontsize=16)
+
+    save_path = './Comparison'
+    path_check(save_path, remove_path=remove_path)
+    plt.savefig(save_path + '/{}.png'.format(timeType))
+

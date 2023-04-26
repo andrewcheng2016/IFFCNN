@@ -212,7 +212,6 @@ def find_kernels_ipca(dataset, sample_patches, dc, num_kernels, Q, sqs, m, n, us
     explained_variance = 100 * latent_new / sum(latent_new)
 
     num_components = num_kernels
-    pca_det = np.linalg.det(principal_components)
     kernels = principal_components[:num_components, :]  # The shape of pca.components_ is (12, 16); The shape of kernels is (12, 16)
     mean = np.mean(sample_patches_centered, axis=0)
 
@@ -240,7 +239,7 @@ def find_kernels_ipca(dataset, sample_patches, dc, num_kernels, Q, sqs, m, n, us
 
 
 
-    return kernels, mean, dc, Q_new, m, sqs, n, sigma_new, gamma, pca_det, z_new, sample_patches, principal_components[:num_components, :]
+    return kernels, mean, dc, Q_new, m, sqs, n, sigma_new, gamma, z_new, principal_components[:num_components, :]
 
 
 
@@ -347,7 +346,7 @@ def multi_Saab_transform(dataset, images, labels, kernel_sizes, num_kernels, ene
     sample_images = transformed.reshape(num_samples, h, w, -1)
 
     # Maxpooling
-    sample_images = block_reduce(sample_images, (1, 2, 2, 1), np.max)
+    sample_images = block_reduce(sample_images, (1, 2, 2, 1), np.max).astype(np.float32)
 
 
     if(print_detail == True):
@@ -413,9 +412,9 @@ def multi_Saab_transform_IPCA(dataset, images, labels, kernel_sizes, num_kernels
         num_kernel = num_kernels if isinstance(kernel_sizes, int) else num_kernels[i]
 
 
-    kernels, mean, dc, Q_new, m, sqs, n, std, gamma, pca_det, z_new, sample_patches, pc = find_kernels_ipca(dataset, sample_patches,
-                                                                                                            dc_mean, num_kernel, Q, sqs,
-                                                                                                            mean, n, use_gpu, print_detail=print_detail)
+    kernels, mean, dc, Q_new, m, sqs, n, std, gamma, z_new, pc = find_kernels_ipca(dataset, sample_patches,
+                                                                                   dc_mean, num_kernel, Q, sqs,
+                                                                                   mean, n, use_gpu, print_detail=print_detail)
 
     num_channels = sample_patches.shape[-1]
     if i == 0:
@@ -439,7 +438,7 @@ def multi_Saab_transform_IPCA(dataset, images, labels, kernel_sizes, num_kernels
     sample_images = transformed.reshape(len(sample_images), h, w, -1)
 
     # Maxpooling
-    sample_images = block_reduce(sample_images, (1, 2, 2, 1), np.max)
+    sample_images = block_reduce(sample_images, (1, 2, 2, 1), np.max).astype(np.float32)
     if (print_detail == True):
         print('Sample patches shape after flatten:', sample_patches.shape)
         print('Kernel shape:', kernels.shape)
@@ -499,7 +498,7 @@ def initialize(sample_images, layer_no, pca_params, print_detail=False):
     sample_images = transformed.reshape(num_samples, h, w, -1)
 
     # Maxpooling
-    sample_images = block_reduce(sample_images, (1, 2, 2, 1), np.max) # (400, 14, 14, 6)
+    sample_images = block_reduce(sample_images, (1, 2, 2, 1), np.max).astype(np.float32) # (400, 14, 14, 6)
 
     if(print_detail == True):
         print('Sample patches shape after flatten:', sample_patches.shape)

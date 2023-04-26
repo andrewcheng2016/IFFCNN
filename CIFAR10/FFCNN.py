@@ -23,7 +23,7 @@ def get_kernel(dataset, train_images, train_labels, kernel_sizes, num_kernels, e
 
 
 def get_kernel_online(dataset, train_images, train_labels, kernel_sizes, num_kernels, old_pca_params,
-                      pca_method_1st, pca_method_2nd, use_classes, random_seed, energy_percent, print_detail=True):
+                      pca_method_1st, pca_method_2nd, use_classes, random_seed, print_detail=True):
 
     pca_params_list = {}
     for m in range(len(num_kernels)):

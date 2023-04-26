@@ -58,7 +58,7 @@ def UpdateQ(Q_old, x_new, n, mean_old, sqs_old):
 
     References
     ----------
-    V. Lippi and G. Ceccarelli, “Incremental principal component analysis exact implementation and continuity corrections,” in ICINCO, 2019.
+    V. Lippi and G. Ceccarelli, “Incremental principal component analysis exact implementation and continuity corrections.” in ICINCO, 2019.
     ----------
 
     """

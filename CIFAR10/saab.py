@@ -341,7 +341,7 @@ def multi_Saab_transform(dataset, images, labels, kernel_sizes, num_kernels, ene
     sample_images = transformed.reshape(num_samples, h, w, -1)
 
     # Maxpooling
-    sample_images = block_reduce(sample_images, (1, 2, 2, 1), np.max)
+    sample_images = block_reduce(sample_images, (1, 2, 2, 1), np.max).astype(np.float32)
 
 
     if(print_detail == True):
@@ -434,7 +434,7 @@ def multi_Saab_transform_IPCA(dataset, images, labels, kernel_sizes, num_kernels
     sample_images = transformed.reshape(len(sample_images), h, w, -1)
 
     # Maxpooling
-    sample_images = block_reduce(sample_images, (1, 2, 2, 1), np.max)
+    sample_images = block_reduce(sample_images, (1, 2, 2, 1), np.max).astype(np.float32)
     if (print_detail == True):
         print('Sample patches shape after flatten:', sample_patches.shape)
         print('Kernel shape:', kernels.shape)
@@ -496,9 +496,8 @@ def initialize(sample_images, layer_no, pca_params, print_detail=False):
     sample_images = transformed.reshape(num_samples, h, w, -1)
 
     # Maxpooling
-    sample_images = block_reduce(sample_images, (1, 2, 2, 1), np.max) # (400, 14, 14, 6)
-    # if (i != (num_layers - 1)):
-    #     sample_images = np.pad(sample_images, ((0, 0), (1, 1), (1, 1), (0, 0)), mode='constant')
+    sample_images = block_reduce(sample_images, (1, 2, 2, 1), np.max).astype(np.float32)
+
 
     if(print_detail == True):
         print('Sample patches shape after flatten:', sample_patches.shape)

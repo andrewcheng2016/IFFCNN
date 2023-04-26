@@ -30,7 +30,6 @@ def parse_arg():
     parser.add_argument('-num_kernels', choices=["5,15", "31,63,127"], default="31,63")  # num_kernels = "31,63" if dataset != "MNIST" else "5,15"
     parser.add_argument('-energy_percent', type=float, default=None)  # Energy to be preserved in each stage
     parser.add_argument('-num_samples_per_batch', type=int, default=10000) # Num of new samples per batch
-    parser.add_argument('-IPCA_partition', type=int, default=2)
     parser.add_argument('-PCA_method_1st', choices=["sklearn", "svd", "GPU", "IPCA", "GPU_IPCA"], default="IPCA")  # Methods to perform pca at 1st layer
     parser.add_argument('-PCA_method_2nd', choices=["sklearn", "svd", "GPU", "IPCA", "GPU_IPCA"], default="IPCA")  # Methods to perform pca at 2nd layer
     parser.add_argument('-gpu_partition', type=int, default=5) # Num of partitions for GPU IPCA
@@ -59,14 +58,7 @@ def main():
     # Get num_class_per_batch classes for each class for each batch
     train_images_batch, train_labels_batch = dataset_batch(train_images, train_labels, total_stage, num_samples_per_batch, random_seed)
 
-    if "IPCA" in opt.PCA_method_1st or "IPCA" in opt.PCA_method_2nd:
-        use_ipca = True
-        IPCA_partition = opt.IPCA_partition
-
-    else:
-        use_ipca = False
-        IPCA_partition = "N/A"
-
+    use_ipca = True if "IPCA" in opt.PCA_method_1st or "IPCA" in opt.PCA_method_2nd else False
     device = "GPU" if "GPU" in opt.PCA_method_1st or "GPU" in opt.PCA_method_2nd else "CPU"
 
 
@@ -169,7 +161,7 @@ def main():
 
         # TODO: Start Training Model
         print('--------Start training the classifier--------')
-
+        print("Type of train_feature: ", train_feature.dtype)
         weights, biases, train_acc, training_time = clf(dataset, train_feature, trained_labels,
                                                         use_classes, print_detail=print_detail)
         classifier_training_time.append(training_time)
