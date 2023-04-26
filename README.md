@@ -1,2 +1,2 @@
-# GPU_FFCNN
-GPU Implementation of FFCNN
+# IFFCNN
+Incremental Verison of FFCNN
