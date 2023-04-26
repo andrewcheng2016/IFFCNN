@@ -34,6 +34,7 @@ def IPCA(Q_old=None, n=None, x_new=None, mean_old=None, sqs_old=None, use_gpu=Fa
 
     Q_new, mean_new, sqs_new, sigma_new, z_new, n, gamma = UpdateQ(Q_old, x_new, n, mean_old, sqs_old)
     covariance_matrix = Q_new
+    covariance_matrix[torch.isnan(covariance_matrix)] = 0
 
     u, s, v = torch.svd(covariance_matrix)
     coeff = v

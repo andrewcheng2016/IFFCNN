@@ -172,7 +172,7 @@ def comparisonPlot(opt, time, method, timeType, remove_path=False):
         plt.plot(x, time[l], label=method[l], color=color[l], marker='o')
         plt.legend(loc='upper left', fontsize=16)
 
-    save_path = './Comparison'
+    save_path = './Comparison/BatchSize_{}/'.format(opt.num_samples_per_batch)
     path_check(save_path, remove_path=remove_path)
     plt.savefig(save_path + '/{}.png'.format(timeType))
 
