@@ -11,20 +11,18 @@ import time
 import datetime
 
 
-def MNIST_Regressor(feature, train_labels, num_clusters, class_list, weights, bias, print_detail=False):
+def MNIST_Regressor(feature, train_labels, num_clusters, class_list, weights, bias, random_seed=1, print_detail=False):
     use_classes = len(class_list)
 
     for k in range(len(num_clusters)):
         if k != len(num_clusters) - 1:
             # Kmeans_Mixed_Class (too slow for CIFAR, changed into Fixed Class)
-            start_clf_time = time.time()
-            kmeans = KMeans(n_clusters=num_clusters[k]).fit(feature)
+            kmeans = KMeans(n_clusters=num_clusters[k], random_state=random_seed).fit(feature)
 
             # labels_, _ = kmeans_pytorch.kmeans(
             #     X=torch.from_numpy(feature).to("cuda"),
             #     num_clusters=num_clusters[k], distance='euclidean', device=torch.device('cuda')
             # )
-            end_clf_time = time.time()
             # print("Kmeans time (cluster {}): {}".format(k, datetime.timedelta(seconds=end_clf_time - start_clf_time)))
             pred_labels = kmeans.labels_
             # pred_labels = labels_.cpu().numpy()
@@ -59,8 +57,6 @@ def MNIST_Regressor(feature, train_labels, num_clusters, class_list, weights, bi
                 if clus_labels[pred_labels[i]] == train_labels[i]:
                     labels[i, pred_labels[i]] = 1
                 else:
-                    distance_assigned = euclidean_distances(feature[i].reshape(1, -1),
-                                                            centroid[pred_labels[i]].reshape(1, -1))
                     cluster_special = [j for j in range(num_clusters[k]) if clus_labels[j] == train_labels[i]]
                     distance = np.zeros(len(cluster_special))
                     for j in range(len(cluster_special)):
@@ -122,7 +118,7 @@ def MNIST_Regressor(feature, train_labels, num_clusters, class_list, weights, bi
     return weights, bias, acc_train
 
 
-def clf(dataset, feature, train_labels, class_list, print_detail):
+def clf(dataset, feature, train_labels, class_list, random_seed, print_detail):
     starting_training_time = time.time()
     # feature normalization
     std_var = (np.std(feature, axis=0)).reshape(1, -1)
@@ -142,7 +138,8 @@ def clf(dataset, feature, train_labels, class_list, print_detail):
 
     weights = {}
     bias = {}
-    weight, bias, acc_train = MNIST_Regressor(feature, train_labels, num_clusters, class_list, weights, bias, print_detail)
+    
+    weight, bias, acc_train = MNIST_Regressor(feature, train_labels, num_clusters, class_list, weights, bias, random_seed, print_detail)
 
     ending_time_training = time.time()
     return weights, bias, acc_train, ending_time_training-starting_training_time

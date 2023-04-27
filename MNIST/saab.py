@@ -322,6 +322,7 @@ def multi_Saab_transform(dataset, images, labels, kernel_sizes, num_kernels, ene
                                batch_size=batch_size,
                                gpu_partition=gpu_partition
                                )
+
     pc = kernels
     kernels = np.concatenate((dc_kernel, kernels), axis=0)
     num_channels = sample_patches.shape[-1]

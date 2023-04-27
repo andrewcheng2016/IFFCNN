@@ -162,8 +162,10 @@ To plot the comparison of different time.
 def comparisonPlot(opt, time, method, timeType, remove_path=False):
     plt.figure(figsize=(10, 8))
     # plt.title('Comparison of {} time'.format(timeType), fontsize=16)
-    plt.ylabel('Time (s)', fontsize=18)
-    plt.xlabel('Number of samples', fontsize=18)
+    plt.ylabel('Time (s)', fontweight='bold')
+    plt.xlabel('Number of samples', fontweight='bold')
+    plt.xticks(fontweight='bold')
+    plt.yticks(fontweight='bold')
     plt.grid(True)
     plt.rcParams['font.weight'] = 'bold'
     color=['blue', 'green', 'purple', 'red']

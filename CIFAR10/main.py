@@ -29,7 +29,7 @@ def parse_arg():
     parser.add_argument('-kernel_sizes', choices=["3,3,3", "5,5"], default="5,5")  # Kernels size for each stage
     parser.add_argument('-num_kernels', choices=["5,15", "31,63,127"], default="31,63")  # num_kernels = "31,63" if dataset != "MNIST" else "5,15"
     parser.add_argument('-energy_percent', type=float, default=None)  # Energy to be preserved in each stage
-    parser.add_argument('-num_samples_per_batch', type=int, default=5000) # Num of new samples per batch
+    parser.add_argument('-num_samples_per_batch', type=int, default=10000) # Num of new samples per batch
     parser.add_argument('-PCA_method_1st', choices=["sklearn", "svd", "GPU", "IPCA", "GPU_IPCA"], default="GPU_IPCA")  # Methods to perform pca at 1st layer
     parser.add_argument('-PCA_method_2nd', choices=["sklearn", "svd", "GPU", "IPCA", "GPU_IPCA"], default="GPU_IPCA")  # Methods to perform pca at 2nd layer
     parser.add_argument('-gpu_partition', type=int, default=5) # Num of partitions for GPU IPCA
@@ -162,7 +162,7 @@ def main():
         print('--------Start training the classifier--------')
         print("Type of train_feature: ", train_feature.dtype)
         weights, biases, train_acc, training_time = clf(dataset, train_feature, trained_labels,
-                                                        use_classes, print_detail=print_detail)
+                                                        use_classes, random_seed, print_detail=print_detail)
         classifier_training_time.append(training_time)
         print('--------Finish training the classifier--------')
 

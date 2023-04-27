@@ -9,7 +9,7 @@ from sklearn.metrics import confusion_matrix
 import time
 
 
-def CIFAR10_Regressor(feature, train_labels, num_clusters, class_list, weights, bias, print_detail=False):
+def CIFAR10_Regressor(feature, train_labels, num_clusters, class_list, weights, bias, random_seed=1, print_detail=False):
     use_classes = len(class_list)
     for k in range(len(num_clusters)):
         if k != len(num_clusters) - 1:
@@ -25,7 +25,7 @@ def CIFAR10_Regressor(feature, train_labels, num_clusters, class_list, weights, 
                 #     X=torch.from_numpy(feature_special).to("cuda"),
                 #     num_clusters=num_clus, distance='euclidean', device=torch.device('cuda')
                 # )
-                kmeans = KMeans(n_clusters=num_clus).fit(feature_special)
+                kmeans = KMeans(n_clusters=num_clus, random_state=random_seed).fit(feature_special)
                 pred_labels = kmeans.labels_
                 for i in range(feature_special.shape[0]):
                     labels[index[i], pred_labels[i] + n * num_clus] = 1
@@ -74,7 +74,7 @@ def CIFAR10_Regressor(feature, train_labels, num_clusters, class_list, weights, 
             acc_train = sklearn.metrics.accuracy_score(train_labels, pred_labels)
     return weights, bias, acc_train
 
-def clf(dataset, feature, train_labels, class_list, print_detail):
+def clf(dataset, feature, train_labels, class_list, random_seed, print_detail):
     starting_training_time = time.time()
     # feature normalization
     std_var = (np.std(feature, axis=0)).reshape(1, -1)
@@ -94,7 +94,7 @@ def clf(dataset, feature, train_labels, class_list, print_detail):
 
     weights = {}
     bias = {}
-    weight, bias, acc_train = CIFAR10_Regressor(feature, train_labels, num_clusters, class_list, weights, bias, print_detail)
+    weight, bias, acc_train = CIFAR10_Regressor(feature, train_labels, num_clusters, class_list, weights, bias, random_seed, print_detail)
 
     ending_time_training = time.time()
     return weights, bias, acc_train, ending_time_training-starting_training_time

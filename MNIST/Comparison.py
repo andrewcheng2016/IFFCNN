@@ -59,7 +59,7 @@ def main():
 
     # Get num_class_per_batch classes for each class for each batch
     train_images_batch, train_labels_batch = dataset_batch(train_images, train_labels, total_stage, num_samples_per_batch, random_seed)
-
+    a = train_images_batch[0]
 
     print("Dataset Generation Done!")
 
@@ -70,7 +70,7 @@ def main():
     energy_percent = opt.energy_percent
 
     PCA_method = ["sklearn", "GPU", "IPCA", "GPU_IPCA"]
-    # PCA_method = ["GPU_IPCA"]
+    # PCA_method = ["GPU","GPU_IPCA"]
 
     stage_time = np.zeros([len(PCA_method), total_stage])
     get_kernel_time = np.zeros([len(PCA_method), total_stage])
@@ -141,12 +141,29 @@ def main():
 
             else:
                 print("Number of trained images: ", len(trained_images))
+                if(stage == 0):
+                    print("Is the first batch image correct: ", np.equal(trained_images, a).all())
                 pca_params = get_kernel(dataset, trained_images, trained_labels, kernel_sizes, num_kernels,
                                         opt.energy_percent,
                                         pca_method_1st=method, pca_method_2nd=method,
                                         gpu_partition=gpu_partition,
                                         use_ipca=use_ipca,
                                         print_detail=opt.print_detail)
+                if(method == "sklearn"):
+                    pca_params_cpu_store = pca_params
+                elif(method == "GPU"):
+                    pca_params_gpu_store = pca_params
+
+                else:
+                    check_store = pca_params_cpu_store if (method == "ipca") else pca_params_gpu_store
+                    print("(Layer 0) Is the kernel equal: ",
+                          np.equal(pca_params['PCA Kernels/Layer%d' % 0]['Layer_%d/kernel' % 0],
+                                   check_store['PCA Kernels/Layer%d' % 0]['Layer_%d/kernel' % 0]).all())
+
+                    print("(Layer 1) Is the kernel equal: ",
+                          np.equal(pca_params['PCA Kernels/Layer%d' % 1],
+                                   check_store['PCA Kernels/Layer%d' % 1]).all())
+
 
             end_getKernel_time = time()
             get_kernel_time[method_no, stage] = (end_getKernel_time - start_getKernel_time)
@@ -160,6 +177,7 @@ def main():
             start_getFeature_time = time()
             _, train_feature = get_feature(trained_images, pca_params_list, trainset=True, print_detail=print_detail)
             end_getFeature_time = time()
+
             get_feature_time[method_no, stage] = (end_getFeature_time - start_getFeature_time)
 
             _, test_feature = get_feature(test_images, pca_params_list, trainset=False, print_detail=print_detail)
@@ -169,7 +187,8 @@ def main():
             print('--------Start training the classifier--------')
             print("Type of train_feature: ", train_feature.dtype)
             weights, biases, train_acc, training_time = clf(dataset, train_feature, trained_labels,
-                                                            use_classes, print_detail=print_detail)
+                                                            use_classes, random_seed, print_detail=print_detail)
+
             classifier_training_time[method_no, stage] = training_time
             print('--------Finish training the classifier--------')
 

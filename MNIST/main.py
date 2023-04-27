@@ -164,7 +164,7 @@ def main():
         print('--------Start training the classifier--------')
         print("Type of train_feature: ", train_feature.dtype)
         weights, biases, train_acc, training_time = clf(dataset, train_feature, trained_labels,
-                                                        use_classes, print_detail=print_detail)
+                                                        use_classes, random_seed, print_detail=print_detail)
         classifier_training_time.append(training_time)
         print('--------Finish training the classifier--------')
 
