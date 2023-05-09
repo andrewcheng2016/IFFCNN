@@ -9,8 +9,9 @@ import matplotlib.pyplot as plt
 import data
 
 from FFCNN import get_kernel, get_kernel_online, get_feature
-from Toolbox import parse_list_string, dataset_batch, path_check, plot_confusion_matrix, comparisonPlot
+from Toolbox import parse_list_string, dataset_batch, path_check, plot_confusion_matrix, TimeComparisonPlot, AccuracyComparisonPlot
 from classifier import clf, testing_clf
+from simplified_classifier import simplified_clf, simplified_testing_clf
 
 def parse_arg():
     logging.basicConfig(
@@ -30,11 +31,10 @@ def parse_arg():
     parser.add_argument('-kernel_sizes', choices=["3,3,3", "5,5"], default="5,5")  # Kernels size for each stage
     parser.add_argument('-num_kernels', choices=["5,15", "31,63,127"], default="31,63")  # num_kernels = "31,63" if dataset != "MNIST" else "5,15"
     parser.add_argument('-energy_percent', type=float, default=None)  # Energy to be preserved in each stage
-    parser.add_argument('-num_samples_per_batch', type=int, default=5000) # Num of new samples per batch
-    # parser.add_argument('-IPCA_partition', type=int, default=2)
-    # parser.add_argument('-PCA_method_1st', choices=["sklearn", "svd", "GPU", "IPCA", "GPU_IPCA"], default="IPCA")  # Methods to perform pca at 1st layer
-    # parser.add_argument('-PCA_method_2nd', choices=["sklearn", "svd", "GPU", "IPCA", "GPU_IPCA"], default="IPCA")  # Methods to perform pca at 2nd layer
+    parser.add_argument('-retrain', action='store_true', default=True)  # Retrain the FFCNN or not
+    parser.add_argument('-num_samples_per_batch', type=int, default=10000) # Num of new samples per batch
     parser.add_argument('-gpu_partition', type=int, default=5) # Num of partitions for GPU IPCA
+    parser.add_argument('-simplified_classifier', action='store_true', default=True)  # Use simplified classifier or not
     parser.add_argument('-print_detail', action='store_true', default=False)  # Print details of the process?
 
     opt = parser.parse_args()
@@ -76,6 +76,7 @@ def main():
     get_kernel_time = np.zeros([len(PCA_method), total_stage])
     get_feature_time = np.zeros([len(PCA_method), total_stage])
     classifier_training_time = np.zeros([len(PCA_method), total_stage])
+    testing_acc = np.zeros([len(PCA_method), total_stage])
 
     method_no = 0
     for method in PCA_method:
@@ -94,12 +95,15 @@ def main():
         print('Kernel_sizes:', kernel_sizes)
         print('Number_kernels:', num_kernels)
         print('Energy_percent:', energy_percent)
+        if (use_ipca == False):
+            print('Retrain the FFCNN:', opt.retrain)
         print('1st layer PCA method:', method)
         print('2nd layer PCA method:', method)
         print('Use IPCA:', use_ipca)
         print('Device:', device)
         if (device == "GPU"):
             print('GPU partition:', gpu_partition)
+        print('Simplied Classifier:', opt.simplified_classifier)
         print('Print IFFCNN detail:', print_detail)
 
         stage_train_acc = []
@@ -132,6 +136,7 @@ def main():
 
             start_getKernel_time = time()
             if use_ipca == True and stage != 0:
+                print("Number of trainset images for training IFFCNN: ", len(images))
                 pca_params = get_kernel_online(dataset, images, labels, kernel_sizes, num_kernels, pca_params,
                                                pca_method_1st=method, pca_method_2nd=method,
                                                use_classes=use_classes.tolist(), random_seed=opt.random_seed,
@@ -140,8 +145,11 @@ def main():
 
 
             else:
-                print("Number of trained images: ", len(trained_images))
-                pca_params = get_kernel(dataset, trained_images, trained_labels, kernel_sizes, num_kernels,
+                FFCNN_train_images = trained_images if (opt.retrain == True) else images
+                FFCNN_train_labels = trained_labels if (opt.retrain == True) else labels
+                print("Number of trainset images for training FFCNN: ", len(FFCNN_train_images))
+
+                pca_params = get_kernel(dataset, FFCNN_train_images, FFCNN_train_labels, kernel_sizes, num_kernels,
                                         opt.energy_percent,
                                         pca_method_1st=method, pca_method_2nd=method,
                                         gpu_partition=gpu_partition,
@@ -168,14 +176,23 @@ def main():
             # TODO: Start Training Model
             print('--------Start training the classifier--------')
             print("Type of train_feature: ", train_feature.dtype)
-            weights, biases, train_acc, training_time = clf(dataset, train_feature, trained_labels,
-                                                            use_classes, random_seed, print_detail=print_detail)
+            print("Number of trainset images for training classifier: ", len(train_feature))
+            if(opt.simplified_classifier == False):
+                print("Original Classifier is used")
+                weights, biases, train_acc, training_time = clf(dataset, train_feature, trained_labels,
+                                                                use_classes, random_seed, print_detail=print_detail)
+                print('--------Finish training the classifier--------')
+                test_acc, confusion_matrix = testing_clf(dataset, test_feature, test_labels, weights, biases,
+                                                         use_classes, print_detail=print_detail)
+            else:
+                print("Simplified Classifier is used")
+
+                weights, biases, train_acc, training_time = simplified_clf(train_feature, trained_labels, use_classes, print_detail)
+
+                print('--------Finish training the classifier--------')
+                test_acc, confusion_matrix = simplified_testing_clf(test_feature, test_labels, weights, biases)
             classifier_training_time[method_no, stage] = training_time
-            print('--------Finish training the classifier--------')
-
-            test_acc, confusion_matrix = testing_clf(dataset, test_feature, test_labels, weights, biases,
-                                                     use_classes, print_detail=print_detail)
-
+            testing_acc[method_no, stage] = test_acc
             stage_train_acc.append(train_acc)
             stage_test_acc.append(test_acc)
             end_time_stage = time()
@@ -190,12 +207,13 @@ def main():
                                                                                                                     method,
                                                                                                                     device, test_acc))
 
-            print('[Samples:{}/{}] Time Used (1st layer:{} / 2nd layer:{} / Device:{}) is {}'.format(trained_images_num,
-                                                                                                   total_images,
-                                                                                                   method,
-                                                                                                   method,
-                                                                                                   device,
-                                                                                                   datetime.timedelta(seconds=end_time_stage - start_time_stage)))
+            seconds = datetime.timedelta(seconds=end_time_stage - start_time_stage)
+            print('[Samples:{}/{}] Time Used (1st layer:{} / 2nd layer:{} / Device:{}) is {}:{}.{}'.format(trained_images_num,
+                                                                                                       total_images,
+                                                                                                       method,
+                                                                                                       method,
+                                                                                                       device,
+                                                                                                       (seconds.seconds//60), (seconds.seconds % 60), str(seconds.microseconds)[:4]))
 
         ending_time_whole_process = time()
         remove_path = True
@@ -212,34 +230,38 @@ def main():
         trained_images_num = 0
         for stage in range(total_stage):
             trained_images_num += num_samples_per_batch
-            print("Stage {} [Samples:{}/{}] Time used: {}".format(stage, trained_images_num, len(train_images),
-                                                                  datetime.timedelta(seconds=stage_time[method_no,stage])))
+            seconds = datetime.timedelta(seconds=stage_time[method_no,stage])
+            print("Stage {} [Samples:{}/{}] Time used: {}:{}.{}".format(stage, trained_images_num, len(train_images),
+                                                                        (seconds.seconds//60), (seconds.seconds % 60), str(seconds.microseconds)[:4]))
 
         print("\n")
         trained_images_num = 0
         for stage in range(total_stage):
             trained_images_num += num_samples_per_batch
-            print("Stage {} [Samples:{}/{}] Time used for getting kernel: {}".format(stage, trained_images_num, len(train_images),
-                                                                                     datetime.timedelta(seconds=get_kernel_time[method_no, stage])))
+            seconds = datetime.timedelta(seconds=get_kernel_time[method_no, stage])
+            print("Stage {} [Samples:{}/{}] Time used for getting kernel: {}:{}.{}".format(stage, trained_images_num, len(train_images),
+                                                                                           (seconds.seconds//60), (seconds.seconds % 60), str(seconds.microseconds)[:4]))
 
         print("\n")
         trained_images_num = 0
         for stage in range(total_stage):
             trained_images_num += num_samples_per_batch
-            print("Stage {} [Samples:{}/{}] Time used for getting feature: {}".format(stage, trained_images_num, len(train_images),
-                                                                                      datetime.timedelta(seconds=get_feature_time[method_no, stage])))
+            seconds = datetime.timedelta(seconds=get_feature_time[method_no, stage])
+            print("Stage {} [Samples:{}/{}] Time used for getting feature: {}:{}.{}".format(stage, trained_images_num, len(train_images),
+                                                                                           (seconds.seconds//60), (seconds.seconds % 60), str(seconds.microseconds)[:4]))
 
         print("\n")
         trained_images_num = 0
         for stage in range(total_stage):
             trained_images_num += num_samples_per_batch
-            print("Stage {} [Samples:{}/{}] Time used for training classifier: {}".format(stage, trained_images_num, len(train_images),
-                                                                                          datetime.timedelta(seconds=classifier_training_time[method_no, stage])))
+            seconds = datetime.timedelta(seconds=classifier_training_time[method_no, stage])
+            print("Stage {} [Samples:{}/{}] Time used for training classifier: {}:{}.{}".format(stage, trained_images_num, len(train_images),
+                                                                                               (seconds.seconds//60), (seconds.seconds % 60), str(seconds.microseconds)[:4]))
 
 
 
-
-        print("\nTime used for the whole process: {} ".format(datetime.timedelta(seconds=ending_time_whole_process - starting_time_whole_process)))
+        seconds = datetime.timedelta(seconds=ending_time_whole_process - starting_time_whole_process)
+        print("\nTime used for the whole process: {}:{}.{} ".format((seconds.seconds//60), (seconds.seconds % 60), str(seconds.microseconds)[:4]))
         print("Ending time for the whole process: {}".format(datetime.datetime.now()))
 
         print("\n==================== Accuracy Summary (1st layer:{} / 2nd layer:{} / Device:{}) ====================".format(method,
@@ -263,10 +285,11 @@ def main():
                                                                                                                       device))
 
     print("\nPlotting the time comparison graph...")
-    comparisonPlot(opt, stage_time, PCA_method, "Overall", remove_path=True)
-    comparisonPlot(opt, get_kernel_time, PCA_method, "Getting Kernel", remove_path=False)
-    comparisonPlot(opt, get_feature_time, PCA_method, "Getting Feature", remove_path=False)
-    comparisonPlot(opt, classifier_training_time, PCA_method, "Training Classifier", remove_path=False)
+    AccuracyComparisonPlot(opt, testing_acc, PCA_method, remove_path=True)
+    TimeComparisonPlot(opt, stage_time, PCA_method, "Overall", remove_path=True)
+    TimeComparisonPlot(opt, get_kernel_time, PCA_method, "Getting Kernel", remove_path=False)
+    TimeComparisonPlot(opt, get_feature_time, PCA_method, "Getting Feature", remove_path=False)
+    TimeComparisonPlot(opt, classifier_training_time, PCA_method, "Training Classifier", remove_path=False)
     print("Completed!")
 
 

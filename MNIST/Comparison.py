@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import data
 
 from FFCNN import get_kernel, get_kernel_online, get_feature
-from Toolbox import parse_list_string, dataset_batch, path_check, plot_confusion_matrix, comparisonPlot
+from Toolbox import parse_list_string, dataset_batch, path_check, plot_confusion_matrix, TimeComparisonPlot, AccuracyComparisonPlot
 from classifier import clf, testing_clf
 
 def parse_arg():
@@ -30,10 +30,8 @@ def parse_arg():
     parser.add_argument('-kernel_sizes', choices=["3,3,3", "5,5"], default="5,5")  # Kernels size for each stage
     parser.add_argument('-num_kernels', choices=["5,15", "31,63,127"], default="5,15")  # num_kernels = "31,63" if dataset != "MNIST" else "5,15"
     parser.add_argument('-energy_percent', type=float, default=None)  # Energy to be preserved in each stage
+    parser.add_argument('-retrain', action='store_true', default=True)  # Retrain the FFCNN or not
     parser.add_argument('-num_samples_per_batch', type=int, default=5000) # Num of new samples per batch
-    # parser.add_argument('-IPCA_partition', type=int, default=2)
-    # parser.add_argument('-PCA_method_1st', choices=["sklearn", "svd", "GPU", "IPCA", "GPU_IPCA"], default="IPCA")  # Methods to perform pca at 1st layer
-    # parser.add_argument('-PCA_method_2nd', choices=["sklearn", "svd", "GPU", "IPCA", "GPU_IPCA"], default="IPCA")  # Methods to perform pca at 2nd layer
     parser.add_argument('-gpu_partition', type=int, default=5) # Num of partitions for GPU IPCA
     parser.add_argument('-print_detail', action='store_true', default=False)  # Print details of the process?
 
@@ -70,12 +68,13 @@ def main():
     energy_percent = opt.energy_percent
 
     PCA_method = ["sklearn", "GPU", "IPCA", "GPU_IPCA"]
-    # PCA_method = ["GPU","GPU_IPCA"]
+    # PCA_method = ["GPU_IPCA"]
 
     stage_time = np.zeros([len(PCA_method), total_stage])
     get_kernel_time = np.zeros([len(PCA_method), total_stage])
     get_feature_time = np.zeros([len(PCA_method), total_stage])
     classifier_training_time = np.zeros([len(PCA_method), total_stage])
+    testing_acc = np.zeros([len(PCA_method), total_stage])
 
     method_no = 0
     for method in PCA_method:
@@ -94,6 +93,8 @@ def main():
         print('Kernel_sizes:', kernel_sizes)
         print('Number_kernels:', num_kernels)
         print('Energy_percent:', energy_percent)
+        if (use_ipca == False):
+            print('Retrain the FFCNN:', opt.retrain)
         print('1st layer PCA method:', method)
         print('2nd layer PCA method:', method)
         print('Use IPCA:', use_ipca)
@@ -132,6 +133,7 @@ def main():
 
             start_getKernel_time = time()
             if use_ipca == True and stage != 0:
+                print("Number of trainset images for training IFFCNN: ", len(images))
                 pca_params = get_kernel_online(dataset, images, labels, kernel_sizes, num_kernels, pca_params,
                                                pca_method_1st=method, pca_method_2nd=method,
                                                use_classes=use_classes.tolist(), random_seed=opt.random_seed,
@@ -140,30 +142,16 @@ def main():
 
 
             else:
-                print("Number of trained images: ", len(trained_images))
-                if(stage == 0):
-                    print("Is the first batch image correct: ", np.equal(trained_images, a).all())
-                pca_params = get_kernel(dataset, trained_images, trained_labels, kernel_sizes, num_kernels,
+                FFCNN_train_images = trained_images if (opt.retrain == True) else images
+                FFCNN_train_labels = trained_labels if (opt.retrain == True) else labels
+                print("Number of trainset images for training FFCNN: ", len(FFCNN_train_images))
+
+                pca_params = get_kernel(dataset, FFCNN_train_images, FFCNN_train_labels, kernel_sizes, num_kernels,
                                         opt.energy_percent,
                                         pca_method_1st=method, pca_method_2nd=method,
                                         gpu_partition=gpu_partition,
                                         use_ipca=use_ipca,
                                         print_detail=opt.print_detail)
-                if(method == "sklearn"):
-                    pca_params_cpu_store = pca_params
-                elif(method == "GPU"):
-                    pca_params_gpu_store = pca_params
-
-                else:
-                    check_store = pca_params_cpu_store if (method == "ipca") else pca_params_gpu_store
-                    print("(Layer 0) Is the kernel equal: ",
-                          np.equal(pca_params['PCA Kernels/Layer%d' % 0]['Layer_%d/kernel' % 0],
-                                   check_store['PCA Kernels/Layer%d' % 0]['Layer_%d/kernel' % 0]).all())
-
-                    print("(Layer 1) Is the kernel equal: ",
-                          np.equal(pca_params['PCA Kernels/Layer%d' % 1],
-                                   check_store['PCA Kernels/Layer%d' % 1]).all())
-
 
             end_getKernel_time = time()
             get_kernel_time[method_no, stage] = (end_getKernel_time - start_getKernel_time)
@@ -194,7 +182,7 @@ def main():
 
             test_acc, confusion_matrix = testing_clf(dataset, test_feature, test_labels, weights, biases,
                                                      use_classes, print_detail=print_detail)
-
+            testing_acc[method_no, stage] = test_acc
             stage_train_acc.append(train_acc)
             stage_test_acc.append(test_acc)
             end_time_stage = time()
@@ -282,10 +270,11 @@ def main():
                                                                                                                       device))
 
     print("\nPlotting the time comparison graph...")
-    comparisonPlot(opt, stage_time, PCA_method, "Overall", remove_path=True)
-    comparisonPlot(opt, get_kernel_time, PCA_method, "Getting Kernel", remove_path=False)
-    comparisonPlot(opt, get_feature_time, PCA_method, "Getting Feature", remove_path=False)
-    comparisonPlot(opt, classifier_training_time, PCA_method, "Training Classifier", remove_path=False)
+    AccuracyComparisonPlot(opt, testing_acc, PCA_method, remove_path=True)
+    TimeComparisonPlot(opt, stage_time, PCA_method, "Overall", remove_path=True)
+    TimeComparisonPlot(opt, get_kernel_time, PCA_method, "Getting Kernel", remove_path=False)
+    TimeComparisonPlot(opt, get_feature_time, PCA_method, "Getting Feature", remove_path=False)
+    TimeComparisonPlot(opt, classifier_training_time, PCA_method, "Training Classifier", remove_path=False)
     print("Completed!")
 
 

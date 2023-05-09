@@ -3,6 +3,7 @@ import shutil
 import itertools
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.ticker as mtick
 
 
 
@@ -159,22 +160,78 @@ def plot_confusion_matrix(cm, classes,
 """
 To plot the comparison of different time.
 """
-def comparisonPlot(opt, time, method, timeType, remove_path=False):
+def TimeComparisonPlot(opt, time, method, timeType, remove_path=False):
+
     plt.figure(figsize=(10, 8))
     # plt.title('Comparison of {} time'.format(timeType), fontsize=16)
-    plt.ylabel('Time (s)', fontweight='bold')
-    plt.xlabel('Number of samples', fontweight='bold')
-    plt.xticks(fontweight='bold')
-    plt.yticks(fontweight='bold')
+    plt.ylabel('Time (s)', fontweight='bold', fontsize=16)
+    plt.xlabel('Number of samples', fontweight='bold', fontsize=16)
     plt.grid(True)
     plt.rcParams['font.weight'] = 'bold'
-    color=['blue', 'green', 'purple', 'red']
-    x = np.arange(opt.num_samples_per_batch, opt.num_samples_per_batch*(time.shape[1]+1), opt.num_samples_per_batch)
+    color = ['blue', 'green', 'purple', 'red']
+    x = np.arange(opt.num_samples_per_batch, opt.num_samples_per_batch * (time.shape[1] + 1), opt.num_samples_per_batch)
+    x_fontsize = 16
+
+    xtick = np.arange(0, opt.num_samples_per_batch * time.shape[1] + 10000, 10000)
+    plt.xticks(xtick, fontweight='bold', fontsize=x_fontsize)
+    plt.yticks(fontweight='bold', fontsize=16)
+
     for l in range(len(method)):
-        plt.plot(x, time[l], label=method[l], color=color[l], marker='o')
+        plt.plot(x, time[l], label=switch(method[l]), color=color[l], marker='o')
         plt.legend(loc='upper left', fontsize=16)
 
-    save_path = './Comparison/BatchSize_{}/'.format(opt.num_samples_per_batch)
+    if(opt.retrain == True):
+        save_path = './Comparison/Time/Retrain/BatchSize_{}/'.format(opt.num_samples_per_batch)
+    else:
+        save_path = './Comparison/Time/Non Retrain/BatchSize_{}/'.format(opt.num_samples_per_batch)
+
     path_check(save_path, remove_path=remove_path)
     plt.savefig(save_path + '/{}.png'.format(timeType))
+
+"""
+To plot the comparison of different accuracy.
+"""
+def AccuracyComparisonPlot(opt, acc, method, remove_path=False):
+
+    plt.figure(figsize=(10, 8))
+    # plt.title('Comparison of {} time'.format(timeType), fontsize=16)
+    plt.ylabel('Accuracy (%)', fontweight='bold', fontsize=16)
+    plt.xlabel('Number of samples', fontweight='bold', fontsize=16)
+    plt.grid(True)
+    plt.rcParams['font.weight'] = 'bold'
+    color = ['blue', 'green', 'purple', 'red']
+    x = np.arange(opt.num_samples_per_batch, opt.num_samples_per_batch * (acc.shape[1] + 1), opt.num_samples_per_batch)
+    x_fontsize = 16
+
+    xtick = np.arange(0, opt.num_samples_per_batch*acc.shape[1]+10000, 10000)
+
+    plt.xticks(xtick, fontweight='bold', fontsize=x_fontsize)
+    plt.yticks(fontweight='bold', fontsize=16)
+    plt.gca().yaxis.set_major_formatter(mtick.PercentFormatter(1.0))
+    plt.gca().yaxis.set_major_locator(mtick.MultipleLocator(0.1))
+    plt.gca().set_xlim([0, opt.num_samples_per_batch*(acc.shape[1]+1)])
+    plt.gca().set_ylim([0, 1])
+
+
+    for l in range(len(method)):
+        plt.plot(x, acc[l], label=switch(method[l]), color=color[l], marker='o')
+        plt.legend(loc='upper left', fontsize=16)
+
+    if(opt.retrain == True):
+        save_path = './Comparison/Accuracy/Retrain/BatchSize_{}/'.format(opt.num_samples_per_batch)
+    else:
+        save_path = './Comparison/Accuracy/Non Retrain/BatchSize_{}/'.format(opt.num_samples_per_batch)
+
+    path_check(save_path, remove_path=remove_path)
+    plt.savefig(save_path + '/Testing Accuracy.png')
+
+def switch(method):
+    if (method == 'sklearn'):
+        return "CPU FFCNN"
+    elif(method == 'GPU'):
+        return "GPU FFCNN"
+    elif(method == 'IPCA'):
+        return "CPU IFFCNN"
+    elif(method == 'GPU_IPCA'):
+        return "GPU IFFCNN"
 
