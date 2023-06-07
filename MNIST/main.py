@@ -21,7 +21,6 @@ def parse_arg():
     # General Parameters
     parser = argparse.ArgumentParser(description='main.py')
     parser.add_argument('-dataset', choices=['MNIST', 'CIFAR10'], default='MNIST')
-    parser.add_argument('-num_class_per_batch', type=int, default=2) # Num of classes per batch
     parser.add_argument('-random_seed', type=int, default=1) # Random Seed for shuffling and model initialization
     parser.add_argument('-channel', type=int, default=1)
     parser.add_argument('-resolution', type=int, default=32)
@@ -86,6 +85,7 @@ def main():
     print('Energy_percent:', energy_percent)
     print('1st layer PCA method:', opt.PCA_method_1st)
     print('2nd layer PCA method:', opt.PCA_method_2nd)
+
     print('Use IPCA:', use_ipca)
     print('Device:', device)
     if (device == "GPU"):

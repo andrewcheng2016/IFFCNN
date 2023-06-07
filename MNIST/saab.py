@@ -478,15 +478,21 @@ def initialize(sample_images, layer_no, pca_params, print_detail=False):
     # Flatten
     sample_patches = sample_patches.reshape([-1, sample_patches.shape[-1]])
 
+    # Remove feature mean (Set E(X)=0 for each dimension)
+    sample_patches_centered, feature_expectation = remove_mean(sample_patches, axis=0)
+    # sample_patches_centered=sample_patches-feature_expectation
+
+    # Remove patch mean
+    training_data, dc = remove_mean(sample_patches_centered, axis=1)
 
     num_channels = sample_patches.shape[-1]
     if i == 0:
         # Transform to get data for the next stage
-        transformed = np.matmul(sample_patches, np.transpose(kernels))
+        transformed = np.matmul(sample_patches_centered, np.transpose(kernels))
     else:
         bias = pca_params['Layer_%d/bias' % i]
         # Add bias
-        sample_patches_centered_w_bias = sample_patches + 1 / np.sqrt(num_channels) * bias
+        sample_patches_centered_w_bias = sample_patches_centered + 1 / np.sqrt(num_channels) * bias
         # Transform to get data for the next stage
         transformed = np.matmul(sample_patches_centered_w_bias, np.transpose(kernels))
         # Remove bias
