@@ -157,13 +157,14 @@ def find_kernels_pca(training_data, num_kernels, energy_percent, pca_method, pri
 
         for m in range(gpu_partition):
             training_data_slice = training_data[start_idx:start_idx+partition_size]
-            start_idx += partition_size
+
             training_data_tensor = torch.from_numpy(training_data_slice.T).to(device='cuda')
             if(m == 0):
                 covariance_matrix = torch.cov(training_data_tensor)
             else:
-                covariance_matrix += torch.cov(training_data_tensor)
-        covariance_matrix /= partition_size
+                covariance_matrix = (start_idx/(start_idx+len(training_data_slice)))*covariance_matrix + (len(training_data_slice)/(start_idx+len(training_data_slice)))*torch.cov(training_data_tensor)
+            start_idx += len(training_data_slice)
+
 
         u, s, v = torch.svd(covariance_matrix)
         principal_components = v.cpu().numpy().T
