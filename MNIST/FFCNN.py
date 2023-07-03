@@ -8,6 +8,7 @@ def get_kernel(dataset, train_images, train_labels, kernel_sizes, num_kernels, e
                pca_method_1st, pca_method_2nd, gpu_partition=10, use_ipca=False, print_detail=True):
 
     pca_params_list = {}
+    train_images = train_images.astype(np.float32)
     for m in tqdm(range(len(num_kernels)), desc="Calculating PCA Kernels", file=sys.stdout):
         pca_method = pca_method_1st if m == 0 else pca_method_2nd
         pca_params_list['PCA Kernels/Layer{}'.format(m)], train_images, = saab.multi_Saab_transform(dataset, train_images, train_labels,
@@ -33,7 +34,7 @@ def get_kernel_online(dataset, train_images, train_labels, kernel_sizes, num_ker
             if (m != 0):
                 train_images, _ = get_feature(train_images, [pca_params_list['PCA Kernels/Layer{}'.format(m - 1)]],
                                               trainset=True, print_detail=print_detail)
-                train_images = train_images.astype(np.float32)
+            train_images = train_images.astype(np.float32)
 
 
 

@@ -297,7 +297,8 @@ def multi_Saab_transform(dataset, images, labels, kernel_sizes, num_kernels, ene
         dc_mean = dc
         sqs = np.sum(np.square(training_data), axis=0)
         std = np.std(training_data, axis=0, ddof=1)
-        Q = np.matmul(training_data.T, training_data)
+        # Q = np.matmul(training_data.T, training_data)/(training_data.shape[0]-1)
+        Q = np.cov(training_data.T).astype(np.float32)
         n = len(training_data)
         mean = np.mean(training_data, axis=0)
         pca_params['Layer_%d/mean' % i] = mean
